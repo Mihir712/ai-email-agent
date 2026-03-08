@@ -1,9 +1,9 @@
-import os
+import importlib
 
 from .classifier import classify_email
 from .draft_generator import generate_draft
 from . import database
-import importlib
+from .config import OPENAI_API_KEY, APP_ENV
 
 
 def run_agent(email: str) -> dict:
@@ -20,21 +20,26 @@ def run_agent(email: str) -> dict:
     except Exception:
         examples = database.get_training_emails()
         # normalize shape
-        examples = [{"email": e['email'], "reply": e['reply']} for e in examples]
+        examples = [{"email": e["email"], "reply": e["reply"]} for e in examples]
 
     # ensure at least one example exists
     if not examples:
-        examples = [{"email": "Are you free next week?", "reply": "Happy to connect next week."}]
+        examples = [
+            {"email": "Are you free next week?", "reply": "Happy to connect next week."}
+        ]
 
-    warning = None
-    if not os.getenv("OPENAI_API_KEY"):
-        warning = (
-            "OPENAI_API_KEY is not set. Returning a fallback response. "
-            "Set OPENAI_API_KEY to enable real model generation."
-        )
-
-    # generate draft
-    draft = generate_draft(email, examples)
+    # If key is missing:
+    # - in dev: you could still use a fake/dummy response
+    # - in prod: raise so it surfaces as a clean error, not a mixed-in warning
+    if not OPENAI_API_KEY:
+        if APP_ENV == "development":
+            # optional: dev-only fake response
+            draft = "FAKE RESPONSE (no OPENAI_API_KEY set in development)."
+        else:
+            raise RuntimeError("OPENAI_API_KEY is not set.")
+    else:
+        # generate real draft via OpenAI (your generate_draft should be using OPENAI_API_KEY internally)
+        draft = generate_draft(email, examples)
 
     # save draft
     database.save_draft(incoming_id, draft)
@@ -43,8 +48,5 @@ def run_agent(email: str) -> dict:
         "classification": category,
         "draft_reply": draft,
     }
-
-    if warning:
-        result["warning"] = warning
 
     return result
