@@ -17,3 +17,9 @@ CORS_ORIGINS = _split_env_list(
 
 # Optional: allow open access when explicitly requested
 ALLOW_ALL_ORIGINS = os.getenv("ALLOW_ALL_ORIGINS", "false").lower() in ("1", "true", "yes")
+
+# Required for remote model generation
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if APP_ENV == "production" and not OPENAI_API_KEY:
+    raise RuntimeError("OPENAI_API_KEY must be set in production.")
