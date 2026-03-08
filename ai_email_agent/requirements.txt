@@ -2,5 +2,4 @@ fastapi
 uvicorn
 chromadb
 openai
-# (no sqlite3 line)
-...
+# (no sqlite3 line) etc.
